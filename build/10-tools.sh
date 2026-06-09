@@ -12,7 +12,6 @@ PACKAGES=(
     bettercap
     binwalk
     bloodhound-ce-python
-    bloodhound.py
     bruteshark
     bsdmainutils
     build-essential
@@ -125,7 +124,6 @@ PACKAGES=(
     pwncat
     python2
     python3
-    python3-impacket
     python3-ldapdomaindump
     python3-lsassy
     python3-pip
