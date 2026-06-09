@@ -1,0 +1,66 @@
+name: build-image
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: '0 0 1 * *'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: kali-cloud
+  IMAGE_TAG: latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log into ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Set image reference
+        id: meta
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=${{ env.REGISTRY }}/${OWNER}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        run: |
+          podman info
+          podman build -t ${{ steps.meta.outputs.image }} .
+
+      - name: Push image
+        id: push
+        if: github.event_name != 'pull_request'
+        run: |
+          podman push --digestfile=/tmp/digest ${{ steps.meta.outputs.image }}
+          image="${{ steps.meta.outputs.image }}"
+          echo "ref=${image%:*}@$(cat /tmp/digest)" >> $GITHUB_OUTPUT
+
+      - name: Sign image (keyless)
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_YES: "true"
+        run: |
+          cosign sign --yes ${{ steps.push.outputs.ref }}

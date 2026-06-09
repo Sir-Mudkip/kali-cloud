@@ -1,0 +1,94 @@
+# .bashrc
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# Shell options
+HISTCONTROL=ignoreboth
+shopt -s histappend
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s checkwinsize
+
+# PATH
+if ! [[ "$PATH" =~ "$HOME/.local/bin:$HOME/bin:" ]]; then
+    PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+fi
+export PATH
+
+# Colours
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    export LS_COLORS="$LS_COLORS:ow=30;44:"
+
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+    alias diff='diff --color=auto'
+    alias ip='ip --color=auto'
+
+    export LESS_TERMCAP_mb=$'\E[1;31m'
+    export LESS_TERMCAP_md=$'\E[1;36m'
+    export LESS_TERMCAP_me=$'\E[0m'
+    export LESS_TERMCAP_so=$'\E[01;33m'
+    export LESS_TERMCAP_se=$'\E[0m'
+    export LESS_TERMCAP_us=$'\E[1;32m'
+    export LESS_TERMCAP_ue=$'\E[0m'
+fi
+
+# Extra Aliases
+alias ll='ls -l'
+alias la='ls -A'
+alias l='ls -CF'
+alias kg='ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""'
+
+# Editor
+export EDITOR=/usr/bin/nvim
+export VISUAL=/usr/bin/nvim
+export NVIM_APPNAME="nvim"
+export XDG_CONFIG_HOME="$HOME/.config"
+
+# Vim mode
+set -o vi
+bind -m vi-command 'Control-l: clear-screen'
+bind -m vi-insert 'Control-l: clear-screen'
+
+# fzf
+eval "$(fzf --bash)"
+
+# Bash completion
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+# Source aliases and functions
+if [ -d ~/.bashrc.d ]; then
+    for rc in ~/.bashrc.d/*; do
+        if [ -f "$rc" ]; then
+            . "$rc"
+        fi
+    done
+fi
+unset rc
+
+# Prompt
+if [ -t 0 ]; then
+    source /etc/profile.d/bash-color-prompt.sh
+fi
+
+PS1='\[\e[31m\]⌬\[\e[0m\] '"$PS1"
+
+__git_branch() {
+    local ref
+    ref=$(/usr/bin/git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -n "$ref" ]] && __git_info=" \"$ref\"" || __git_info=""
+}
+PROMPT_COMMAND=__git_branch

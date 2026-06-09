@@ -1,0 +1,99 @@
+# cloud aliases, functions and shell environment (auto-sourced by .bashrc)
+
+# don't page systemctl output
+export SYSTEMD_PAGER=
+
+# krew (kubectl plugin manager)
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
+# aws completer
+complete -C '/usr/local/bin/aws_completer' aws
+
+# azure completer
+[ -f /root/.az.completion ] && source /root/.az.completion
+
+# aliases for venvs (kubenumerate alias is written by 25-cloud-tools.sh as kubenumerate.rc)
+alias extensiverolecheck="/opt/kubernetes-rbac-audit/venv/bin/python /opt/kubernetes-rbac-audit/ExtensiveRoleCheck.py"
+
+# aws
+aws-role-assumer() {
+	# get role information
+	read -p 'enter role arn: ' role_arn
+	read -p 'enter role session name: ' role_session_name
+	read -p 'enter profile to use: ' profile_name
+
+	# call role assumption
+	temp_role=$(aws sts assume-role --role-arn $role_arn --role-session-name $role_session_name --profile $profile_name)
+
+	# update aws configuration
+	# export variables
+	export AWS_ACCESS_KEY_ID=$(echo $temp_role | jq -r .Credentials.AccessKeyId)
+	export AWS_SECRET_ACCESS_KEY=$(echo $temp_role | jq -r .Credentials.SecretAccessKey)
+	export AWS_SESSION_TOKEN=$(echo $temp_role | jq -r .Credentials.SessionToken)
+	export AWS_PROFILE=$role_session_name
+
+	# create new profile in config
+	aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile $role_session_name
+	aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile $role_session_name
+	aws configure set aws_session_token $AWS_SESSION_TOKEN --profile $role_session_name
+}
+
+aws-role-assumer-with-external-id() {
+	# get role information
+	read -p 'enter role arn: ' role_arn
+	read -p 'enter role session name: ' role_session_name
+	read -p 'enter external id: ' external_id
+	read -p 'enter profile to use: ' profile_name
+
+	# call role assumption
+	temp_role=$(aws sts assume-role --role-arn $role_arn --role-session-name $role_session_name --profile $profile_name --external-id $external_id)
+
+	# update aws configuration
+	# export variables
+	export AWS_ACCESS_KEY_ID=$(echo $temp_role | jq -r .Credentials.AccessKeyId)
+	export AWS_SECRET_ACCESS_KEY=$(echo $temp_role | jq -r .Credentials.SecretAccessKey)
+	export AWS_SESSION_TOKEN=$(echo $temp_role | jq -r .Credentials.SessionToken)
+
+	# create new profile in config
+	aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile $role_session_name
+	aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile $role_session_name
+	aws configure set aws_session_token $AWS_SESSION_TOKEN --profile $role_session_name
+}
+
+aws-mfa-session() {
+	# get role information
+	read -p 'Enter MFA ARN: ' mfa_arn
+	read -p 'Enter MFA Token: ' token
+	read -p 'Enter Profile to use: ' profile_name
+
+	# call role assumption
+	session=$(aws sts get-session-token --serial-number $mfa_arn --token-code $token --profile $profile_name)
+
+	# update aws configuration
+	# export variables
+	export AWS_ACCESS_KEY_ID=$(echo $session | jq -r .Credentials.AccessKeyId)
+	export AWS_SECRET_ACCESS_KEY=$(echo $session | jq -r .Credentials.SecretAccessKey)
+	export AWS_SESSION_TOKEN=$(echo $session | jq -r .Credentials.SessionToken)
+
+	# create new profile in config
+	aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile mfa
+	aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile mfa
+	aws configure set aws_session_token $AWS_SESSION_TOKEN --profile mfa
+}
+
+aws-audit() {
+	# get profile
+	read -p 'Enter Profile to Scan: ' profile
+	account=$(aws sts get-caller-identity --query "Account" --output text --profile "$profile")
+
+	prowler aws --profile $profile --output-directory $PWD
+	prowler aws -o $PWD --profile $profile --quick-inventory
+	pmapper --profile $profile graph create
+	pmapper --account $account analysis
+	cloudsplaining download --profile $profile -o $PWD
+	cloudsplaining scan --input-file $profile.json -o $PWD
+	iamactionhunter --profile $profile --collect
+	scout aws --report-dir $PWD -p $profile --no-browser
+	cloudfox aws all-checks -p $profile -v 2
+	cloudfox aws cape -p $profile
+}

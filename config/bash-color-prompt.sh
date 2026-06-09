@@ -1,0 +1,7 @@
+# Kali container prompt
+PROMPT_COLOR="${PROMPT_COLOR:-31}"
+PROMPT_USERHOST="${PROMPT_USERHOST:-\u㉿kali}"
+PROMPT_SEPARATOR="${PROMPT_SEPARATOR:-:}"
+PROMPT_DIRECTORY="${PROMPT_DIRECTORY:-\w}"
+
+PS1='[\[\e[${PROMPT_COLOR}m\]${PROMPT_USERHOST@P}\[\e[0m\]]-[${PROMPT_DIRECTORY@P}\[\e[1;35m\]${__git_info}\[\e[0m\]] '
