@@ -169,7 +169,6 @@ PACKAGES=(
     trufflehog
     tshark
     unzip
-    wfuzz
     wget2
     wifiphisher
     wifite

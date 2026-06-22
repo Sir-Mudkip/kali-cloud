@@ -38,7 +38,7 @@ python3 -m venv /opt/eavesarp/venv
 echo "alias eavesarp=\"/opt/eavesarp/venv/bin/python /opt/eavesarp/eavesarp.py\"" > /root/.bashrc.d/eavesarp.rc
 
 # netexec
-pipx install git+https://github.com/Pennyw0rth/NetExec
+pipx ensurepath && pipx install git+https://github.com/Pennyw0rth/NetExec
 
 # dnscan
 git clone --depth 1 https://github.com/rbsec/dnscan /opt/dnscan
