@@ -20,9 +20,6 @@ pipx inject azure-cli setuptools
 ## bash completion
 curl -o "/root/.az.completion" "https://raw.githubusercontent.com/Azure/azure-cli/refs/heads/main/az.completion"
 
-# oci cli
-bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
-
 # aws session manager plugin
 curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "/opt/session-manager-plugin.deb"
 dpkg -i /opt/session-manager-plugin.deb

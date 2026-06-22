@@ -81,4 +81,4 @@ RUN --mount=type=tmpfs,dst=/tmp nuclei -ut
 WORKDIR /root
 # boot systemd so in-container services (docker, postgresql, sshd, …) can be managed;
 # run the container with --privileged
-CMD /sbin/init
+CMD ["/sbin/init"]

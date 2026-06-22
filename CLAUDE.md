@@ -20,7 +20,7 @@ There is no test suite; "does it build" is the test. CI (`.github/workflows/buil
 
 ## Build architecture
 
-`Containerfile` is a **two-stage build**. The `builder` stage runs `build/00-go-installs.sh` to compile the Go tools (`brutespray`, `gowitness`, `wpprobe`, `gobuster`, `nuclei`) and John the Ripper, then `build/05-cloud-go-installs.sh` to compile the cloud Go tools (`cloudfox`, `aws-enumerator`, `GoAWSConsoleSpray`) and `kics`. The final stage then `COPY --from=builder` only the resulting binaries (`/usr/local/bin/*`, `/opt/john-the-ripper`, `/opt/kics`), so the `golang` toolchain and build leftovers never ship. The builder uses the **same** `kali-rolling` base as the final image, so John links against identical runtime libraries.
+`Containerfile` is a **two-stage build**. The `builder` stage runs `build/00-go-installs.sh` to compile the Go tools (`brutespray`, `gowitness`, `wpprobe`, `gobuster`, `nuclei`. Basically ANY tool that is installable by go should be in here), then `build/05-cloud-go-installs.sh` to compile the cloud Go tools (`cloudfox`, `aws-enumerator`, `GoAWSConsoleSpray`) and `kics`. The final stage then `COPY --from=builder` only the resulting binaries (`/usr/local/bin/*`, `/opt/john-the-ripper`, `/opt/kics`), so the `golang` toolchain and build leftovers never ship. The builder uses the **same** `kali-rolling` base as the final image, so John links against identical runtime libraries.
 
 The final stage copies `config/` into the image, copies `build/` to `/build`, then runs the build scripts **in order**, each with `cache`/`tmpfs` mounts:
 
