@@ -26,7 +26,6 @@ PACKAGES=(
     crowbar
     curl
     default-mysql-client
-    dirb
     dnschef
     dnsrecon
     dnsutils
@@ -92,6 +91,7 @@ PACKAGES=(
     nbtscan-unixwiz
     ncat
     neovim
+    netexec
     netdiscover
     net-tools
     nfs-common

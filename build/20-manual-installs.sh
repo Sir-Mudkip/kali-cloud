@@ -37,9 +37,6 @@ python3 -m venv /opt/eavesarp/venv
 /opt/eavesarp/venv/bin/pip install --no-cache-dir -r /opt/eavesarp/requirements.txt
 echo "alias eavesarp=\"/opt/eavesarp/venv/bin/python /opt/eavesarp/eavesarp.py\"" > /root/.bashrc.d/eavesarp.rc
 
-# netexec
-pipx ensurepath && pipx install git+https://github.com/Pennyw0rth/NetExec
-
 # dnscan
 git clone --depth 1 https://github.com/rbsec/dnscan /opt/dnscan
 python3 -m venv /opt/dnscan/venv
