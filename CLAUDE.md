@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-This repo builds a **Kali Linux container image** (not application code) packed with offensive-security tooling for on-network and Active Directory work, **plus cloud-pentest/cloud-audit tooling**. It is rebuilt monthly and published to `ghcr.io/sir-mudkip/kali-cloud`. The container boots with systemd (`CMD /sbin/init`) so in-container services (docker, postgresql, sshd, …) can be managed. It is meant to be run with `--privileged --network host` for raw network access, shell catching, and systemd.
+This repo builds a **Kali Linux container image** (not application code) packed with offensive-security tooling for on-network and Active Directory work, **plus cloud-pentest/cloud-audit tooling**. It is rebuilt monthly and published to `ghcr.io/sir-mudkip/kali-cloud`. It is a plain tools container (`CMD /bin/bash`) — no systemd/init. It is meant to be run with `--privileged --network host` for raw network access and shell catching.
 
-**Cloud tooling (this fork).** This image ships AWS/Azure/Kubernetes/OCI and multi-cloud tooling (kubectl/krew, prowler, scoutsuite, pacu, cloudfox, kics, snotra_*, etc.). **gcloud / GCP tooling is intentionally excluded** — do not add it. New cloud tools go in `build/25-cloud-tools.sh` (or `build/05-cloud-go-installs.sh` for compiled Go/kics tools); systemd/Docker/service packages live in the `PACKAGES` array and Docker block of `build/10-tools.sh`.
+**Cloud tooling (this fork).** This image ships AWS/Azure/Kubernetes/OCI and multi-cloud tooling (kubectl/krew, prowler, pacu, cloudfox, kics, snotra_*, etc.). **gcloud / GCP tooling is intentionally excluded** — do not add it. New cloud tools go in the per-provider `build/2*-*-tools.sh` script that matches the tool (`25-aws`, `26-azure`, `27-kubernetes`, `28-docker-iac`, `29-multicloud`), or `build/00-go-installs.sh` for compiled Go/kics tools; apt packages live in the `PACKAGES` array of `build/10-tools.sh`.
 
 ## Commands
 
@@ -20,13 +20,13 @@ There is no test suite; "does it build" is the test. CI (`.github/workflows/buil
 
 ## Build architecture
 
-`Containerfile` is a **two-stage build**. The `builder` stage runs `build/00-go-installs.sh` to compile the Go tools (`brutespray`, `gowitness`, `wpprobe`, `gobuster`, `nuclei`. Basically ANY tool that is installable by go should be in here), then `build/05-cloud-go-installs.sh` to compile the cloud Go tools (`cloudfox`, `aws-enumerator`, `GoAWSConsoleSpray`) and `kics`. The final stage then `COPY --from=builder` only the resulting binaries (`/usr/local/bin/*`, `/opt/john-the-ripper`, `/opt/kics`), so the `golang` toolchain and build leftovers never ship. The builder uses the **same** `kali-rolling` base as the final image, so John links against identical runtime libraries.
+`Containerfile` is a **two-stage build**. The `builder` stage runs `build/00-go-installs.sh` to compile the Go tools — `nuclei` plus the cloud Go tools (`cloudfox`, `aws-enumerator`, `GoAWSConsoleSpray`) and `kics`. Basically ANY tool that is installable by go should be in here. The final stage then `COPY --from=builder` only the resulting binaries (`/usr/local/bin/*`, `/opt/kics`), so the `golang` toolchain and build leftovers never ship. The builder uses the **same** `kali-rolling` base as the final image, so the copied binaries link against identical runtime libraries.
 
 The final stage copies `config/` into the image, copies `build/` to `/build`, then runs the build scripts **in order**, each with `cache`/`tmpfs` mounts:
 
-1. `build/10-tools.sh` — `apt` installs everything in the inline `PACKAGES=(...)` array (including `systemd` + service daemons such as `openssh-server`), then sets up Docker (docker-ce, `vfs` storage driver).
+1. `build/10-tools.sh` — `apt` installs everything in the inline `PACKAGES=(...)` array.
 2. `build/20-manual-installs.sh` — the bulk of the on-network/AD image: tools not in apt, installed from GitHub releases, `git clone`, `pip`, `gem`, etc. **Add new non-apt AD/network tools here.**
-3. `build/25-cloud-tools.sh` — the cloud tooling: tools not in apt, installed from GitHub releases, `git clone`, `pipx`, etc. **Add new non-apt cloud tools here** (gcloud/GCP excluded).
+3. `build/25-aws-tools.sh`, `build/26-azure-tools.sh`, `build/27-kubernetes-tools.sh`, `build/28-docker-iac-tools.sh`, `build/29-multicloud-tools.sh` — the cloud tooling split by provider: tools not in apt, installed from GitHub releases, `git clone`, `pipx`, etc. **Add new non-apt cloud tools to the file matching the tool** (gcloud/GCP excluded). Order matters: `26-azure` runs before `27-kubernetes` because the Kubernetes script's `az aks install-cli` (kubelogin) needs the `az` CLI.
 4. `build/30-config.sh` — locale, login, and readline tweaks; runs the neovim plugin install.
 5. `build/40-wordlists.sh` — extra wordlists and seclists massaging.
 
@@ -41,7 +41,7 @@ The final stage copies `config/` into the image, copies `build/` to `/build`, th
 
 `impacket` is `pipx install`ed; pipx automatically exposes its example scripts on PATH in `~/.local/bin` **keeping** the `.py` suffix (so you invoke `secretsdump.py`, `wmiexec.py`, etc. — making it obvious you're running the impacket python scripts). No symlink loop is needed.
 
-Compiled tools (`brutespray`, `gowitness`, `wpprobe`, `gobuster`, `nuclei`, John) are built in the **builder stage** (`build/00-go-installs.sh`; cloud Go tools + `kics` in `build/05-cloud-go-installs.sh`) and pulled in via `COPY --from=builder` — add new Go/compiled tools to the relevant builder script, not in the final-stage scripts, so the toolchain stays out of the final image. When you move a tool here, remember to add the matching `COPY --from=builder` line in the Containerfile and drop any duplicate apt/release install from the final stage. Prebuilt release binaries: `wget`/`curl` to `/opt`, `install` into `/usr/local/bin`, then remove the download.
+Compiled tools (`nuclei`, the cloud Go tools, and `kics`) are built in the **builder stage** (`build/00-go-installs.sh`) and pulled in via `COPY --from=builder` — add new Go/compiled tools to the relevant builder script, not in the final-stage scripts, so the toolchain stays out of the final image. When you move a tool here, remember to add the matching `COPY --from=builder` line in the Containerfile and drop any duplicate apt/release install from the final stage. Prebuilt release binaries: `wget`/`curl` to `/opt`, `install` into `/usr/local/bin`, then remove the download.
 
 Keep cleanup inline (remove tarballs/zip/clone leftovers after install) since each build script runs as one cached layer.
 
