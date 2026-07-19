@@ -17,3 +17,6 @@ cd /opt/cloudsploit
 npm install --omit=dev
 npm cache clean --force
 chmod +x /opt/cloudsploit/index.js
+
+# ScoutSuite (AWS, Azure, Kubernetes, OCI, Aliyun) — ships the `scout` console script
+pipx install scoutsuite
