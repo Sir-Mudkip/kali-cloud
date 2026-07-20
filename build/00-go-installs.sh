@@ -28,6 +28,9 @@ install -o root -g root -m 0755 /opt/aws-enumerator/bin/aws-enumerator /usr/loca
 GOPATH=/opt/GoAWSConsoleSpray go install -ldflags="-s -w" github.com/WhiteOakSecurity/GoAWSConsoleSpray@latest
 install -o root -g root -m 0755 /opt/GoAWSConsoleSpray/bin/GoAWSConsoleSpray /usr/local/bin/GoAWSConsoleSpray
 
+# ffuf
+go install github.com/ffuf/ffuf/v2@latest
+
 # kics (keep only the binary + query assets the runtime needs). kics' Makefile
 # bakes a version string into its own ldflags, so strip the built binary instead
 # of overriding LDFLAGS.

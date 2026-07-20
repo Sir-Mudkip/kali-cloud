@@ -42,10 +42,10 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=tmpfs,dst=/tmp \
     /build/25-aws-tools.sh
 
-RUN --mount=type=cache,dst=/var/cache \
-    --mount=type=cache,dst=/var/log \
-    --mount=type=tmpfs,dst=/tmp \
-    /build/26-azure-tools.sh
+#RUN --mount=type=cache,dst=/var/cache \
+#    --mount=type=cache,dst=/var/log \
+#    --mount=type=tmpfs,dst=/tmp \
+#    /build/26-azure-tools.sh
 
 RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
