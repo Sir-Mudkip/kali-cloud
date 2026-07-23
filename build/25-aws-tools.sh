@@ -38,10 +38,7 @@ rm -rd /var/lib/apt/lists/*
 pipx install s3-account-search
 
 # snotra aws
-git clone --depth 1 "https://gitlab.com/snotra.cloud/aws.git" /opt/snotra_aws
-python3 -m venv /opt/snotra_aws/venv
-/opt/snotra_aws/venv/bin/pip install --no-cache-dir -r /opt/snotra_aws/requirements.txt
-echo "alias snotra_aws=\"/opt/snotra_aws/venv/bin/python /opt/snotra_aws/snotra.py\"" >/root/.bashrc.d/snotra_aws.rc
+pipx install git+https://gitlab.com/snotra.cloud/aws.git
 
 # taws
 curl -sL https://github.com/huseyinbabal/taws/releases/latest/download/taws-x86_64-unknown-linux-musl.tar.gz | tar xz -C /opt

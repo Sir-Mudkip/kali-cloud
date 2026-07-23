@@ -20,6 +20,10 @@ install -o root -g root -m 0755 /root/go/bin/nuclei /usr/local/bin/nuclei
 go install -ldflags="-s -w" github.com/BishopFox/cloudfox@latest
 install -o root -g root -m 0755 /root/go/bin/cloudfox /usr/local/bin/cloudfox
 
+# Ffuf for fuzzing
+go install -v -ldflags="-s -w" github.com/ffuf/ffuf/v2@latest
+install -o root -g root -m 0755 /root/go/bin/ffuf /usr/local/bin/ffuf
+
 # aws-enumerator
 GOPATH=/opt/aws-enumerator go install -v -ldflags="-s -w" github.com/shabarkin/aws-enumerator@latest
 install -o root -g root -m 0755 /opt/aws-enumerator/bin/aws-enumerator /usr/local/bin/aws-enumerator
