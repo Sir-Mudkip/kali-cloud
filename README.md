@@ -2,12 +2,14 @@
 
 This is a Kali container with tools I use daily when pentesting - built monthly. This is the slim cloud-tooling fork: it drops into a `/bin/bash` shell and ships cloud-pentest/cloud-audit tooling (AWS, Azure, Kubernetes, OCI, multi-cloud). gcloud / GCP tooling is intentionally not included.
 
+[!note]
+> If you're using Docker, then simply replace all instances of podman with docker as they are both OCI containers and OCI compliant.
+
 ### Install:
 
 ```bash
 sudo podman pull ghcr.io/sir-mudkip/kali-cloud:latest
 ```
-If using docker then replace podman with docker. Both work as they are OCI compliant.
 
 ### Alias:
 
@@ -16,7 +18,6 @@ I suggest that you run the following command to run the container:
 kali-cloud() {
     sudo podman run \
     --rm \
-    --name kali-cloud \
     --security-opt label=disable \
     --network host \
     --privileged \
@@ -25,10 +26,9 @@ kali-cloud() {
 }
 ```
 
-- If using docker, replace the podman command with docker
 - `--security-opt` is the required if SELinux is enabled
 - `--privileged` is for low level network access
-- `--netowork host` for catching shells
+- `--network host` for catching shells
 - You can update the mount to your desired directory.
 
 ### Credit:
