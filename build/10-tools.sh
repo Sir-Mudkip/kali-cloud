@@ -31,6 +31,7 @@ PACKAGES=(
     pipx
     ruby
     npm
+    trufflehog
 )
 
 # install packages
