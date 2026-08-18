@@ -2,7 +2,7 @@
 
 This is a Kali container with tools I use daily when pentesting - built monthly. This is the slim cloud-tooling fork: it drops into a `/bin/bash` shell and ships cloud-pentest/cloud-audit tooling (AWS, Azure, Kubernetes, OCI, multi-cloud). gcloud / GCP tooling is intentionally not included.
 
-[!note]
+[!NOTE]
 > If you're using Docker, then simply replace all instances of podman with docker as they are both OCI containers and OCI compliant.
 
 ### Install:
