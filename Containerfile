@@ -85,6 +85,9 @@ COPY --from=builder /opt/kics /opt/kics
 # pre-fetch nuclei templates now that the nuclei binary is in place
 RUN --mount=type=tmpfs,dst=/tmp nuclei -ut
 
+# Update
+RUN apt update && apt upgrade -y && apt autoremove
+
 WORKDIR /root
 # plain tools container: drop into a shell. Run with --privileged --network host
 # for raw network access and shell catching.
