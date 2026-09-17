@@ -50,6 +50,17 @@ jobs:
           podman info
           podman build -t ${{ steps.meta.outputs.image }} .
 
+      - name: Rechunk image
+        run: |
+          IMG="${{ steps.meta.outputs.image }}"
+          # chunkah needs the original image config (labels/entrypoint/etc.) fed back in,
+          # otherwise it produces a rechunked image with an empty config.
+          CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
+          export CHUNKAH_CONFIG_STR
+          podman run --rm --mount=type=image,src="$IMG",dest=/chunkah \
+            -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
+              -t "$IMG" | podman load
+
       - name: Push image
         id: push
         if: github.event_name != 'pull_request'

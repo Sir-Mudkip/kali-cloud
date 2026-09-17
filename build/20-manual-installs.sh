@@ -2,6 +2,8 @@
 
 set -eoux pipefail
 
+source /build/helper_functions
+
 # Testssl
 git clone --depth 1 https://github.com/testssl/testssl.sh.git --branch 3.3dev /opt/testssl
 chmod +x /opt/testssl/testssl.sh
@@ -22,6 +24,12 @@ echo "alias linkedin-dumper=\"/opt/linkedin-dumper/venv/bin/python /opt/linkedin
 
 # haiti hash
 gem install haiti-hash
+
+# Titus
+TITUS_VERSION=$(curl_latest_release praetorian-inc/titus)
+wget -q "https://github.com/praetorian-inc/titus/releases/download/${TITUS_VERSION}/titus-linux-amd64" -O /opt/titus
+install -o root -g root -m 0755 /opt/titus /usr/local/bin/titus
+rm /opt/titus
 
 # AAD Internals
 pwsh -c "Install-Module -Name AADInternals -Force"

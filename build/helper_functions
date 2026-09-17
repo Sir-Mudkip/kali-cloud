@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Sourced by the build/*.sh scripts. Not meant to be run directly.
+
+curl_latest_release(){
+    /build/ghcurl "https://api.github.com/repos/$1/releases" \
+        | jq -r '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
+        | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$' \
+        | head -1
+}

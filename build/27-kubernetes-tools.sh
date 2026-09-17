@@ -2,6 +2,8 @@
 
 set -eoux pipefail
 
+source /build/helper_functions
+
 # Kubernetes cloud-pentest / cloud-audit tooling. Runs after
 # build/26-azure-tools.sh so the `az` CLI is available for `az aks install-cli`
 # (kubelogin). krew-based plugins install after kubectl-krew is on PATH.
@@ -48,10 +50,12 @@ python3 -m venv /opt/KubiScan/venv
 echo "alias KubiScan=\"/opt/KubiScan/venv/bin/python /opt/KubiScan/KubiScan.py\"" >/root/.bashrc.d/KubiScan.rc
 
 # kubeaudit
-wget2 "https://github.com/Shopify/kubeaudit/releases/download/v0.22.1/kubeaudit_0.22.1_linux_amd64.tar.gz" -O /opt/kubeaudit_0.22.1_linux_amd64.tar.gz
-tar -xzf /opt/kubeaudit_0.22.1_linux_amd64.tar.gz -C /opt/
+KUBEAUDIT_VERSION=$(curl_latest_release Shopify/kubeaudit)
+KUBEAUDIT_VERSION_NUM="${KUBEAUDIT_VERSION#v}"
+wget2 "https://github.com/Shopify/kubeaudit/releases/download/${KUBEAUDIT_VERSION}/kubeaudit_${KUBEAUDIT_VERSION_NUM}_linux_amd64.tar.gz" -O "/opt/kubeaudit_${KUBEAUDIT_VERSION_NUM}_linux_amd64.tar.gz"
+tar -xzf "/opt/kubeaudit_${KUBEAUDIT_VERSION_NUM}_linux_amd64.tar.gz" -C /opt/
 install -o root -g root -m 0755 /opt/kubeaudit /usr/local/bin/kubeaudit
-rm /opt/kubeaudit_0.22.1_linux_amd64.tar.gz
+rm "/opt/kubeaudit_${KUBEAUDIT_VERSION_NUM}_linux_amd64.tar.gz"
 rm /opt/kubeaudit
 
 # nodeshell
@@ -59,12 +63,10 @@ kubectl-krew install node-shell
 install -o root -g root -m 0755 "$HOME"/.krew/bin/kubectl-node_shell /usr/local/bin/kubectl-node_shell
 
 # kubeletctl
-wget -q https://github.com/cyberark/kubeletctl/releases/download/v1.13/kubeletctl_linux_amd64 -O /opt/kubeletctl
+KUBELETCTL_VERSION=$(curl_latest_release cyberark/kubeletctl)
+wget -q "https://github.com/cyberark/kubeletctl/releases/download/${KUBELETCTL_VERSION}/kubeletctl_linux_amd64" -O /opt/kubeletctl
 install -o root -g root -m 0755 /opt/kubeletctl /usr/local/bin/kubeletctl
 rm /opt/kubeletctl
 
 # snotra kubernetes
-git clone --depth 1 "https://gitlab.com/snotra.cloud/kubernetes.git" /opt/snotra_kubernetes
-python3 -m venv /opt/snotra_kubernetes/venv
-/opt/snotra_kubernetes/venv/bin/pip install --no-cache-dir -r /opt/snotra_kubernetes/requirements.txt
-echo "alias snotra_kubernetes=\"/opt/snotra_kubernetes/venv/bin/python /opt/snotra_kubernetes/snotra.py\"" >/root/.bashrc.d/snotra_kubernetes.rc
+pipx install git+https://gitlab.com/snotra.cloud/kubernetesv2.git

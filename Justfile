@@ -1,5 +1,6 @@
 export image_name := env("IMAGE_NAME", "kali-cloud")
 export default_tag := env("DEFAULT_TAG", "latest")
+export chunkah_version := env("CHUNKAH_VERSION", "v0.6.0")
 
 [private]
 default:
@@ -20,6 +21,25 @@ build $target_image=image_name $tag=default_tag:
         --tag "${target_image}:${tag}" \
         .
 
+
+# Rechunk an already-built image (run `just build` first) so you can inspect the CI's rechunking step locally
+chunk $target_image=image_name $tag=default_tag:
+    #!/usr/bin/env bash
+    set -eoux pipefail
+
+    IMG="${target_image}:${tag}"
+    CHUNKED_IMG="${target_image}:${tag}-chunked"
+
+    CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
+    export CHUNKAH_CONFIG_STR
+    podman run --rm --mount=type=image,src="$IMG",dest=/chunkah \
+        -e CHUNKAH_CONFIG_STR "quay.io/coreos/chunkah:${chunkah_version}" build \
+            -t "$CHUNKED_IMG" | podman load
+
+    echo "--- ${IMG} ---"
+    podman inspect "$IMG" --format '{{{{len .RootFS.Layers}} layers'
+    echo "--- ${CHUNKED_IMG} ---"
+    podman inspect "$CHUNKED_IMG" --format '{{{{len .RootFS.Layers}} layers'
 
 # Runs shell check on all Bash scripts
 lint:

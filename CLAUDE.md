@@ -45,3 +45,8 @@ Compiled tools (`nuclei`, the cloud Go tools, and `kics`) are built in the **bui
 
 Keep cleanup inline (remove tarballs/zip/clone leftovers after install) since each build script runs as one cached layer.
 
+## Rules to follow
+
+- **Leave the machine clean.** Treat the host like you're a guest, not the owner: track any scripts you create or tools/images you pull down, and remove them once you're done. The machine should end a session in the same state it started in.
+- **Never delete personal files.** Files outside this repo's working directory are off-limits for deletion unless you've been explicitly told to remove them.
+
