@@ -55,13 +55,24 @@ does **not** apply here.)
 ```yaml
 - name: Rechunk image
   run: |
-    set -o pipefail
     IMG="${{ steps.meta.outputs.image }}"
     CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
     export CHUNKAH_CONFIG_STR
-    podman run --rm --mount=type=image,src="$IMG",dst=/chunkah \
+    mkdir -p /tmp/chunked
+    podman run --rm \
+      --mount=type=image,src="$IMG",dst=/chunkah \
+      -v /tmp/chunked:/out:z \
       -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
-        -t "$IMG" | podman load
+        --compressed --output oci:/out/image
+```
+
+The push step then copies straight out of that OCI layout:
+
+```yaml
+skopeo copy --authfile="$HOME/.docker/config.json" \
+  --digestfile=/tmp/digest \
+  oci:/tmp/chunked/image \
+  docker://${{ steps.meta.outputs.image }}
 ```
 
 Key points:
@@ -70,10 +81,22 @@ Key points:
   (labels, entrypoint, env) back into the rechunked image. Without it,
   chunkah emits an image with an empty config and the `SHELL`/`LANG`/
   `PATH`/`CMD` set up in the `Containerfile` would be lost.
-- The output is re-tagged with the **same** `$IMG` tag and piped through
-  `podman load`, which **overwrites the tag in place** — the tag now
-  points at the rechunked image. The subsequent push therefore pushes the
-  rechunked version, not the pre-chunk one.
+- **The rechunked image never enters containers-storage.** `--output oci:`
+  writes the OCI directory layout straight to disk, and the push reads
+  from that directory. This is why the push uses `skopeo copy` rather than
+  `podman push` — **a `podman push` here would publish the *pre-chunk*
+  image**, because the local tag still points at the original build.
+- **`--compressed` is deliberate.** chunkah leaves layers uncompressed by
+  default, on the assumption the output is about to be imported into a
+  container storage backend that would just decompress them again. Here
+  the output goes to a registry instead, which wants gzip blobs — so
+  compressing once in chunkah lets skopeo pass the blobs through
+  untouched rather than compressing them itself during the push.
+- The OCI layout carries **no ref name** (its `index.json` has null
+  annotations), which is fine: it holds exactly one manifest, so
+  `oci:/tmp/chunked/image` resolves without a tag suffix.
+- The digest is captured with `--digestfile` so cosign signs the exact
+  ref that was pushed.
 - chunkah defaults to a **max of 64 layers** (configurable with
   `--max-layers`). 64 is a safe default: it stays well under the ~125-127
   layer ceiling that the `overlay2` storage driver imposes on hosts
@@ -83,6 +106,22 @@ Key points:
   margin.
 - The chunkah image tag is pinned to `v0.6.0` and bumped deliberately,
   not auto-tracked, since it's young/fast-moving tooling.
+
+### Why not pipe into `podman load`
+
+The original implementation piped chunkah's archive straight into
+`podman load`. It worked, but on an image this size it was pathologically
+slow — roughly **2.3x the build time** and still climbing when it was
+abandoned (24m build vs 56m+ rechunk).
+
+The cause is that the pipe forces the whole image through disk three
+times over: the original sits in containers-storage, `podman load` spools
+the uncompressed archive into `/var/tmp`, and then imports a third copy
+back into containers-storage. For a ~16 GB image that approaches the
+runner's free disk, so it is a correctness risk as well as a slow one.
+
+chunkah's own README calls this out, recommending `--output oci:PATH` plus
+`skopeo copy` to get the same result without the tar/untar round trip.
 
 ### Runner podman version constraints — read before editing this step
 
@@ -95,12 +134,13 @@ both have already bitten this step once:
    destination key — `dest` is a newer alias added in podman 5.x. Using
    `dest=` works fine locally on podman 5.x and then fails in CI with
    `Error: dest: invalid mount option`.
-2. **Keep `set -o pipefail` at the top of the step.** GitHub Actions runs
-   `run:` blocks with `bash -e`, but *not* `pipefail`. Because chunkah's
-   output is piped into `podman load`, a chunkah failure without
-   `pipefail` is masked: `podman load` receives garbage and the visible
-   error becomes a misleading `payload does not match any of the supported
-   image formats`, burying the real cause.
+2. **Don't reintroduce a pipe without `set -o pipefail`.** GitHub Actions
+   runs `run:` blocks with `bash -e`, but *not* `pipefail`. The original
+   implementation piped chunkah into `podman load`, and a chunkah failure
+   was therefore masked: `podman load` received garbage and the visible
+   error became a misleading `payload does not match any of the supported
+   image formats`, burying the real cause. The current step has no pipe,
+   so failures surface directly — keep it that way, or re-add `pipefail`.
 
 If you change this step, remember the local/CI podman version gap —
 verify option names against the runner's version rather than assuming your
@@ -117,11 +157,16 @@ just build   # produces kali-cloud:latest
 just chunk   # produces kali-cloud:latest-chunked and prints layer counts
 ```
 
-Unlike CI (which overwrites the tag in place, because it's about to push
-that exact tag), `just chunk` writes to a separate `:<tag>-chunked` tag so
-your original build is left untouched for comparison. The chunkah version
-is controlled by the `chunkah_version` variable in the `Justfile`
-(override with the `CHUNKAH_VERSION` env var).
+It runs the same chunkah invocation as CI (`--compressed --output oci:`
+into a temporary directory), then differs only in the last step: where CI
+pushes that OCI layout to the registry with `skopeo copy`, `just chunk`
+copies it into local `containers-storage` under a separate
+`:<tag>-chunked` tag, so the image is inspectable side by side with the
+original. The temp directory is removed on exit.
+
+It requires `skopeo` locally in addition to `podman`, `just` and `jq`. The
+chunkah version is controlled by the `chunkah_version` variable in the
+`Justfile` (override with the `CHUNKAH_VERSION` env var).
 
 ## Signing
 

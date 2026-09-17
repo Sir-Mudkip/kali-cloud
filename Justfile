@@ -29,12 +29,18 @@ chunk $target_image=image_name $tag=default_tag:
 
     IMG="${target_image}:${tag}"
     CHUNKED_IMG="${target_image}:${tag}-chunked"
+    OUT=$(mktemp -d)
+    trap 'rm -rf "$OUT"' EXIT
 
     CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
     export CHUNKAH_CONFIG_STR
-    podman run --rm --mount=type=image,src="$IMG",dst=/chunkah \
+    podman run --rm \
+        --mount=type=image,src="$IMG",dst=/chunkah \
+        -v "$OUT":/out:z \
         -e CHUNKAH_CONFIG_STR "quay.io/coreos/chunkah:${chunkah_version}" build \
-            -t "$CHUNKED_IMG" | podman load
+            --compressed --output oci:/out/image
+
+    skopeo copy "oci:$OUT/image" "containers-storage:$CHUNKED_IMG"
 
     echo "--- ${IMG} ---"
     podman inspect "$IMG" --format '{{{{len .RootFS.Layers}} layers'

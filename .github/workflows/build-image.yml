@@ -52,24 +52,36 @@ jobs:
 
       - name: Rechunk image
         run: |
-          # pipefail: without it a chunkah failure is masked by the podman load
-          # at the end of the pipe, which then fails confusingly on garbage input.
           set -o pipefail
           IMG="${{ steps.meta.outputs.image }}"
           # chunkah needs the original image config (labels/entrypoint/etc.) fed back in,
           # otherwise it produces a rechunked image with an empty config.
           CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
           export CHUNKAH_CONFIG_STR
+          mkdir -p /tmp/chunked
+          # --output oci: writes the OCI layout straight to disk, and --compressed
+          # emits registry-native gzip blobs so the push is a pass-through. Together
+          # these avoid the old "| podman load" round trip, which spooled the whole
+          # uncompressed image through /var/tmp and then imported a third copy into
+          # containers-storage. See docs/ci-cd.md.
           # dst= (not dest=): podman 4.9.x on the runner rejects the newer dest alias.
-          podman run --rm --mount=type=image,src="$IMG",dst=/chunkah \
+          podman run --rm \
+            --mount=type=image,src="$IMG",dst=/chunkah \
+            -v /tmp/chunked:/out:z \
             -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
-              -t "$IMG" | podman load
+              --compressed --output oci:/out/image
 
       - name: Push image
         id: push
         if: github.event_name != 'pull_request'
         run: |
-          podman push --digestfile=/tmp/digest ${{ steps.meta.outputs.image }}
+          # Pushes straight from the rechunked OCI layout. The rechunked image is
+          # NOT in containers-storage, so a `podman push` here would publish the
+          # pre-chunk build instead.
+          skopeo copy --authfile="$HOME/.docker/config.json" \
+            --digestfile=/tmp/digest \
+            oci:/tmp/chunked/image \
+            docker://${{ steps.meta.outputs.image }}
           image="${{ steps.meta.outputs.image }}"
           echo "ref=${image%:*}@$(cat /tmp/digest)" >> $GITHUB_OUTPUT
 

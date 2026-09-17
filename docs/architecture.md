@@ -49,7 +49,7 @@ Local commands:
 | Command        | What it does                                                                                             |
 | -------------- | -------------------------------------------------------------------------------------------------------- |
 | `just build`   | Build the image locally with `podman build`, tagging `kali-cloud:latest`. Adds the `SHA_HEAD_SHORT` build-arg only when the git tree is clean. |
-| `just chunk`   | Rechunk an already-built image locally to reproduce the CI rechunk step (see [ci-cd.md](ci-cd.md)).      |
+| `just chunk`   | Rechunk an already-built image locally to reproduce the CI rechunk step (see [ci-cd.md](ci-cd.md)). Needs `skopeo`. |
 | `just lint`    | Run `shellcheck` on every `*.sh` file in the repo.                                                        |
 | `just format`  | Run `shfmt --write` on every `*.sh` file in the repo.                                                     |
 
