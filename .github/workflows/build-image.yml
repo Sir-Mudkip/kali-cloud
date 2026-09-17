@@ -52,12 +52,16 @@ jobs:
 
       - name: Rechunk image
         run: |
+          # pipefail: without it a chunkah failure is masked by the podman load
+          # at the end of the pipe, which then fails confusingly on garbage input.
+          set -o pipefail
           IMG="${{ steps.meta.outputs.image }}"
           # chunkah needs the original image config (labels/entrypoint/etc.) fed back in,
           # otherwise it produces a rechunked image with an empty config.
           CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
           export CHUNKAH_CONFIG_STR
-          podman run --rm --mount=type=image,src="$IMG",dest=/chunkah \
+          # dst= (not dest=): podman 4.9.x on the runner rejects the newer dest alias.
+          podman run --rm --mount=type=image,src="$IMG",dst=/chunkah \
             -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
               -t "$IMG" | podman load
 

@@ -74,6 +74,7 @@ RUN --mount=type=cache,dst=/var/cache \
 
 # binaries compiled in the builder stage (keeps golang and build leftovers out of this image)
 COPY --from=builder /usr/local/bin/nuclei /usr/local/bin/nuclei
+COPY --from=builder /usr/local/bin/ffuf /usr/local/bin/ffuf
 
 # cloud Go tools + kics compiled in the builder stage
 COPY --from=builder /usr/local/bin/cloudfox /usr/local/bin/cloudfox

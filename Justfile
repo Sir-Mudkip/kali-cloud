@@ -32,7 +32,7 @@ chunk $target_image=image_name $tag=default_tag:
 
     CHUNKAH_CONFIG_STR=$(podman inspect "$IMG" | jq '.[0].Config')
     export CHUNKAH_CONFIG_STR
-    podman run --rm --mount=type=image,src="$IMG",dest=/chunkah \
+    podman run --rm --mount=type=image,src="$IMG",dst=/chunkah \
         -e CHUNKAH_CONFIG_STR "quay.io/coreos/chunkah:${chunkah_version}" build \
             -t "$CHUNKED_IMG" | podman load
 
