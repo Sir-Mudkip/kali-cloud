@@ -125,6 +125,46 @@ runner's free disk, so it is a correctness risk as well as a slow one.
 chunkah's own README calls this out, recommending `--output oci:PATH` plus
 `skopeo copy` to get the same result without the tar/untar round trip.
 
+### Measured results
+
+Run on 2026-09-18 (GitHub `ubuntu-latest`, podman 4.9.3, chunkah v0.6.0):
+
+| Setup | Build | Rechunk | Push | Layers | Largest layers (MiB) |
+|---|---|---|---|---|---|
+| `\| podman load` (original) | — | failed | — | — | — |
+| OCI + skopeo, 64 layers | 33m | 3m45s | 3m50s | 64 | — |
+| OCI + skopeo, 120 layers | 28m | 2m56s | 4m45s | 120 | 1318, 657, 111 |
+
+Total compressed size is 4.86 GiB in both OCI runs; only the split
+changes. Build time varies by several minutes between runs from runner
+noise alone, so compare rechunk and push times, not build.
+
+The 1,318 MiB layer is chunkah's "unclaimed" component (see below). The
+sibling `kali` repo's docs have the full chunkah component breakdown for
+that image; the same pattern applies here.
+
+### Known limitation: the unclaimed-files layer
+
+chunkah only builds components from RPM and pacman (ALPM) package
+databases, plus `user.component` xattrs. It does **not** read dpkg, so on
+this Debian-based image it can't tell which package a file belongs to.
+Everything except large standalone files lands in one "unclaimed"
+component, and a component can't be split across layers.
+
+That component becomes the single largest layer, and it changes on
+essentially every weekly build (`apt upgrade`, pipx, git clones all touch
+it), so users re-download it every week no matter what `--max-layers`
+is set to.
+
+The likely fix is to set `user.component` xattrs from dpkg's file lists
+(`/var/lib/dpkg/info/*.list`), plus one component per `/opt/<tool>` and
+pipx venv, so unchanged packages keep identical layers. This is
+**not implemented or prototyped yet**. One constraint to design around:
+setting an xattr on a file from an earlier layer makes overlayfs copy the
+whole file up, so tagging in a final `RUN` would roughly double the
+pre-chunk image on the runner's disk. The tagging would need to happen on
+a writable view of the image at rechunk time instead.
+
 ### Runner podman version constraints — read before editing this step
 
 The GitHub `ubuntu-latest` runner ships **podman 4.9.3**, which is
