@@ -25,8 +25,9 @@ The job requests `contents: read`, `packages: write`, and
    `ghcr.io/<owner>/kali-cloud:latest` into a step output.
 5. **Build image** — `podman build`.
 6. **Rechunk image** — see [Rechunking](#rechunking) below.
-7. **Push image** *(skipped on pull_request)* — `podman push`, capturing
-   the digest so the exact pushed ref can be signed.
+7. **Push image** *(skipped on pull_request)* — `skopeo copy` from the
+   rechunked OCI layout, capturing the digest so the exact pushed ref can
+   be signed.
 8. **Sign image** *(skipped on pull_request)* — keyless cosign.
 
 ## Rechunking
@@ -63,7 +64,7 @@ does **not** apply here.)
       --mount=type=image,src="$IMG",dst=/chunkah \
       -v /tmp/chunked:/out:z \
       -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
-        --compressed --output oci:/out/image
+        --max-layers 120 --compressed --output oci:/out/image
 ```
 
 The push step then copies straight out of that OCI layout:
@@ -97,13 +98,14 @@ Key points:
   `oci:/tmp/chunked/image` resolves without a tag suffix.
 - The digest is captured with `--digestfile` so cosign signs the exact
   ref that was pushed.
-- chunkah defaults to a **max of 64 layers** (configurable with
-  `--max-layers`). 64 is a safe default: it stays well under the ~125-127
-  layer ceiling that the `overlay2` storage driver imposes on hosts
-  pulling/running the image. Note ghcr.io itself does not enforce a
-  layer-count cap; the ceiling is a container-runtime constraint, so
-  raising `--max-layers` toward 128 buys nothing and eats the safety
-  margin.
+- **`--max-layers 120`.** chunkah's default is 64. The hard ceiling is
+  Docker's: its layer store rejects any image deeper than **125** layers
+  (`maxLayerDepth` in moby), with `max depth exceeded`. Podman's
+  containers-storage allows 500, and ghcr.io enforces no cap. 120 sits
+  just under Docker's limit for finer layers, leaving 5 layers so a Docker
+  user can still `FROM` this image and add a few instructions. Don't go
+  above 125, or the image stops working under Docker. (Sivablue uses 128
+  safely because it's a bootc image that Docker never runs.)
 - The chunkah image tag is pinned to `v0.6.0` and bumped deliberately,
   not auto-tracked, since it's young/fast-moving tooling.
 
@@ -157,7 +159,7 @@ just build   # produces kali-cloud:latest
 just chunk   # produces kali-cloud:latest-chunked and prints layer counts
 ```
 
-It runs the same chunkah invocation as CI (`--compressed --output oci:`
+It runs the same chunkah invocation as CI (`--max-layers 120 --compressed --output oci:`
 into a temporary directory), then differs only in the last step: where CI
 pushes that OCI layout to the registry with `skopeo copy`, `just chunk`
 copies it into local `containers-storage` under a separate

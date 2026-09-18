@@ -69,7 +69,7 @@ jobs:
             --mount=type=image,src="$IMG",dst=/chunkah \
             -v /tmp/chunked:/out:z \
             -e CHUNKAH_CONFIG_STR quay.io/coreos/chunkah:v0.6.0 build \
-              --compressed --output oci:/out/image
+              --max-layers 120 --compressed --output oci:/out/image
 
       - name: Push image
         id: push

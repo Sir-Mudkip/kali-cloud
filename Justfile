@@ -38,7 +38,7 @@ chunk $target_image=image_name $tag=default_tag:
         --mount=type=image,src="$IMG",dst=/chunkah \
         -v "$OUT":/out:z \
         -e CHUNKAH_CONFIG_STR "quay.io/coreos/chunkah:${chunkah_version}" build \
-            --compressed --output oci:/out/image
+            --max-layers 120 --compressed --output oci:/out/image
 
     skopeo copy "oci:$OUT/image" "containers-storage:$CHUNKED_IMG"
 
