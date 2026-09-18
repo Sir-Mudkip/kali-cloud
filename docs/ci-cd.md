@@ -6,8 +6,14 @@ Two GitHub Actions workflows live in `.github/workflows/`.
 
 ### Triggers
 
-- `push` to `master` (ignoring `**/README.md`)
+- `push` to `master`
 - `pull_request` to `master` (builds only — does **not** push or sign)
+
+Both skip the build when a commit touches **only** `**/README.md`,
+`docs/**` or `CLAUDE.md`. None of those files are copied into the image,
+so rebuilding would be wasted runner time. A commit that mixes them with
+any other change still builds. To skip a build for some other change,
+put `[skip ci]` in the commit message.
 - `schedule`: weekly, `cron: '0 0 * * 0'` (Sunday 00:00 UTC)
 
 ### Permissions

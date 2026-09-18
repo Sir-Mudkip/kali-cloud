@@ -4,11 +4,19 @@ on:
   push:
     branches:
       - master
+    # Commits touching only these files skip the build. None of them are
+    # copied into the image. A commit that also changes anything else still builds.
     paths-ignore:
       - '**/README.md'
+      - 'docs/**'
+      - 'CLAUDE.md'
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**'
+      - 'CLAUDE.md'
   schedule:
     - cron: '0 0 * * 0'
 
